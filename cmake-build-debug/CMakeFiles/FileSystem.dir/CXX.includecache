@@ -6,9 +6,19 @@
 
 #IncludeRegexTransform: 
 
-C:/Users/checo/CLionProjects/FileSystem/main.cpp
+C:/Users/checo/CLionProjects/FileSystem/File System/main.cpp
 iostream
 -
+fstream
+-
 string
+-
+vector
+-
+sstream
+-
+algorithm
+-
+math.h
 -
 
