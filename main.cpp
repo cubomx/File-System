@@ -12,6 +12,7 @@ struct fileSystem {
     string name;
     int sizeBlock;
     int availableBlocks;
+    int totalBlocks;
     int startData;
     char * memory;
 };
@@ -98,6 +99,8 @@ fileSystem create (vector <string> cmd, fileSystem file){
         if (blockSize % 128 == 0){
             if (blockNum*blockSize <= pow(10, 9)){
                 file.availableBlocks = blockNum;
+                file.totalBlocks = blockNum;
+                file.sizeBlock = blockSize;
                 file.startData = blockNum/10; // The System requires 10 percent for storing where the files are
                 file.name = cmd[1];
                 file.memory = (char*) malloc(blockNum*blockSize);
@@ -123,6 +126,7 @@ fileSystem create (vector <string> cmd, fileSystem file){
 void save (fileSystem file){
     ofstream mySystem;
     mySystem.open(file.name + ".txt");
+    mySystem << file.name << " " << file.sizeBlock << " " << file.totalBlocks << " " << file.availableBlocks << " " << file.startData << "\n";
     mySystem << file.memory;
     mySystem.close();
 }
