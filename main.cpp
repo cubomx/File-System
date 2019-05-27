@@ -49,6 +49,10 @@ void download (fileSystem, vector<string>);
 
 void saveToDisk(string, string);
 
+fileSystem open (fileSystem, string);
+
+fileSystem fromDiskToVirtual (fileSystem, string);
+
 int main() {
     vector <string> cmd;
     fileSystem file;
@@ -70,7 +74,7 @@ int main() {
             listFiles(file);
         }
         else if ("open" == cmd[0]){
-
+            file = open(file, cmd[1]);
         }
         else if ("rm" == cmd[0]){
             file = remove(file, cmd[1], '0');
@@ -154,9 +158,26 @@ fileSystem create (vector <string> cmd, fileSystem file){
 void save (fileSystem file){
     ofstream mySystem;
     mySystem.open(file.name + ".txt");
-    mySystem << file.name << " " << file.sizeBlock << " " << file.totalBlocks << " " << file.availableBlocks  << "\n";
+    string files;
+    mySystem << "ENV " << file.name << " " << file.sizeBlock << " " << file.totalBlocks << " " << file.availableBlocks  << "\n";
+
+    for (auto const& x : file.files)
+    {
+        files +=  "FILE " + x.first + " ";
+        vector<int> blocks = x.second;
+        for (auto block =  blocks.begin(); block != blocks.end(); block++){
+            files += to_string(*block) + " ";
+        }
+        files += "\nUSED_BLOCKS ";
+    }
+    for (auto elem: file.usedBlocks){
+        files += to_string(elem)+ " ";
+    }
+    files += "\n";
+    mySystem << files;
     mySystem << file.memory;
     mySystem.close();
+    cout << "SUCCESFULLY SAVED THE VIRTUAL SYSTEM ENVIRONMENT\n";
 }
 
 /*
@@ -190,6 +211,7 @@ fileSystem load (fileSystem file, vector <string> cmd){
         file = allocate(file, data, cmd[2]);
         if(file.notSpace){
             cout << "NOT ENOUGH SPACE FOR FILE\n";
+            file.notSpace = false;
             file = remove(file, cmd[2], '1');
         }
         else{
@@ -319,6 +341,61 @@ void download (fileSystem file, vector<string> cmd){
         saveToDisk(data, cmd[2]);
         cout << "SUCCESSFULLY SAVED TO DISK\n";
     }
+}
+
+/*
+ * Getting saved file system environment into the virtual memory
+ */
+
+fileSystem open (fileSystem file, string name){
+    string buffer, data;
+    ifstream inFile;
+    inFile.open(name+".txt");
+    if (inFile.is_open()){
+        while(getline(inFile, buffer)){
+            vector<string> line = split(buffer, ' ');
+            if (line[0] == "ENV"){
+                file.name = line[1];
+                file.sizeBlock = stoi(line[2]);
+                file.totalBlocks = stoi(line[3]);
+                file.availableBlocks = stoi(line[4]);
+                buffer = "";
+            }
+            else if (line[0] == "FILE"){
+                for(int index = 2; index < line.size(); index++){
+                    file.files[line[1]].push_back(stoi(line[index]));
+                }
+                buffer = "";
+            }
+            else if (line[0] == "USED_BLOCKS"){
+                for(int index = 1; index < line.size(); index++){
+                    file.usedBlocks.insert(stoi(line[index]));
+                }
+                buffer = "";
+            }
+            else{
+                file = fromDiskToVirtual(file, buffer);
+            }
+        }
+        cout << "SUCCESFULLY OPENED THE REQUESTED FILE SYSTEM\n";
+    }
+    else{
+        cout << "NOT SUCH VIRTUAL SYSTEM\n";
+    }
+    return file;
+}
+
+/*
+ * Getting the data from disk to save it to the virtual system
+ */
+
+fileSystem fromDiskToVirtual(fileSystem file, string data){
+    file.memory = (char*) malloc(file.sizeBlock*file.totalBlocks);
+    for(int n =0; n < file.sizeBlock*file.totalBlocks;n++)
+    {
+        file.memory[n] = data[n];
+    }
+    return file;
 }
 
 /*
