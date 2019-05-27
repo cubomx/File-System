@@ -9,7 +9,6 @@
 #include <set>
 #include <time.h>
 #include <stdlib.h>
-#include <string.h>
 
 using namespace std;
 
@@ -44,6 +43,12 @@ void listFiles(fileSystem);
 
 void details(fileSystem, vector<string> cmd);
 
+fileSystem remove (fileSystem, string, char);
+
+void download (fileSystem, vector<string>);
+
+void saveToDisk(string, string);
+
 int main() {
     vector <string> cmd;
     fileSystem file;
@@ -55,8 +60,8 @@ int main() {
         else if ("save" == cmd[0]){
             save(file);
         }
-        else if ("download" == cmd[0]){
-
+        else if ("download" == cmd[0] && cmd.size() == 3){
+            download(file, cmd);
         }
         else if ("load" == cmd[0] && cmd.size() == 3){
             file = load(file, cmd);
@@ -68,7 +73,7 @@ int main() {
 
         }
         else if ("rm" == cmd[0]){
-
+            file = remove(file, cmd[1], '0');
         }
         else if ("info" == cmd[0]){
             info(file);
@@ -161,7 +166,7 @@ void info (fileSystem file){
     if (file.name != ""){
         int blocksInUse = file.totalBlocks - file.availableBlocks;
         cout << "FYLE SYSTEM: " << file.name << "\n" << "TOTAL SPACE: " << file.sizeBlock*file.totalBlocks << " BYTES\n";
-        cout << "SPACE IN USE " << file.sizeBlock*blocksInUse << " BYTES\n" << "SPACE FREE: " << file.sizeBlock*file.availableBlocks << "\n";
+        cout << "SPACE IN USE " << file.sizeBlock*blocksInUse << " BYTES\n" << "SPACE FREE: " << file.sizeBlock*file.availableBlocks << " BYTES\n";
     }
     else{
         cout << "NOT CURRENT FILE SYSTEM AVAILABLE\n";
@@ -185,6 +190,7 @@ fileSystem load (fileSystem file, vector <string> cmd){
         file = allocate(file, data, cmd[2]);
         if(file.notSpace){
             cout << "NOT ENOUGH SPACE FOR FILE\n";
+            file = remove(file, cmd[2], '1');
         }
         else{
             cout << "SUCCESFULLY LOADED INTO MEMORY\n";
@@ -262,4 +268,66 @@ void details(fileSystem file, vector <string> cmd){
         }
         cout << "\n";
     }
+}
+
+/*
+ * Removing files from virtual memory and freeing it
+ */
+fileSystem remove (fileSystem file, string name, char mode){
+    if (file.files.find(name) == file.files.end()){
+        cout << "NOT SUCH FILE AVAILABLE\n";
+    }
+    else{
+        vector<int> blocks = file.files[name];
+        int size = file.sizeBlock;
+        for (auto block =  blocks.begin(); block != blocks.end(); block++){
+            int n = *block;
+            int pos =  size * n;
+            file.availableBlocks++;
+            file.usedBlocks.erase(n);
+            while (file.memory[pos] != '1' && pos < (n+1)*size){
+                file.memory[pos] = '1';
+                pos++;
+            }
+        }
+        file.files.erase(name);
+        if (mode == '0') cout << "SUCCESSFULLY ERASED\n";
+    }
+    return file;
+}
+
+/*
+ * Saving file from virtual memory into the disk
+ */
+
+void download (fileSystem file, vector<string> cmd){
+    if (file.files.find(cmd[1]) == file.files.end()){
+        cout << "NOT SUCH FILE AVAILABLE\n";
+    }
+    else{
+        string data;
+        vector<int> blocks = file.files[cmd[1]];
+        int size = file.sizeBlock;
+        for (auto block =  blocks.begin(); block != blocks.end(); block++){
+            int n = *block;
+            int pos =  size * n;
+            while (file.memory[pos] != '1' && pos < (n+1)*size){
+                data += file.memory[pos];
+                pos++;
+            }
+        }
+        saveToDisk(data, cmd[2]);
+        cout << "SUCCESSFULLY SAVED TO DISK\n";
+    }
+}
+
+/*
+ * Writing file to the disk
+ */
+
+void saveToDisk(string data, string name){
+    ofstream mySystem;
+    mySystem.open(name);
+    mySystem << data;
+    mySystem.close();
 }
