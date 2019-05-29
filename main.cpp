@@ -53,12 +53,14 @@ fileSystem open (fileSystem, string);
 
 fileSystem fromDiskToVirtual (fileSystem, string);
 
+void help();
+
 int main() {
     vector <string> cmd;
     fileSystem file;
     do{
         cmd = gettingCommand();
-        if ("create" == cmd[0] && cmd.size() == 4){
+        if ("create" == cmd[0]){
             file = create(cmd, file);
         }
         else if ("save" == cmd[0]){
@@ -82,9 +84,14 @@ int main() {
         else if ("info" == cmd[0]){
             info(file);
         }
-
         else if ("details" == cmd[0]){
             details(file, cmd);
+        }
+        else if ("help" == cmd[0]){
+            help();
+        }
+        else{
+            cout << "NOT MATCHING WITH ANY EXISTING COMMAND\nTYPE help FOR ADVICE\n";
         }
     }while(cmd[0] != "exit");
     return 0;
@@ -126,10 +133,13 @@ vector<string> split(string str, char delimiter) {
  */
 
 fileSystem create (vector <string> cmd, fileSystem file){
-    if (isNumeric(cmd[2]) && isNumeric(cmd[3])){
+    if (cmd.size() <=3){
+        cout << "MISSING DATA: USE help FOR ADVICE\n";
+    }
+    else if (isNumeric(cmd[2]) && isNumeric(cmd[3])){
         int blockSize = stoi(cmd[2]);
         int blockNum = stoi(cmd[3]);
-        if (blockSize % 128 == 0){
+        if (blockSize % 128 == 0 && blockSize <= 1024){
             if (blockNum*blockSize <= pow(10, 9)){
                 file.availableBlocks = blockNum;
                 file.totalBlocks = blockNum;
@@ -149,6 +159,10 @@ fileSystem create (vector <string> cmd, fileSystem file){
             cout << "YOU CAN ONLY CREATE BLOCKS OF THE NEXT SIZES: 128, 256, 512 OR 1024\n";
         }
     }
+
+    else{
+        cout << "THERE'S AN ERROR IN YOUR SYNTAX\n";
+    }
     return file;
 }
 /*
@@ -156,28 +170,33 @@ fileSystem create (vector <string> cmd, fileSystem file){
  * for further uses
  */
 void save (fileSystem file){
-    ofstream mySystem;
-    mySystem.open(file.name + ".txt");
-    string files;
-    mySystem << "ENV " << file.name << " " << file.sizeBlock << " " << file.totalBlocks << " " << file.availableBlocks  << "\n";
+    if (file.name != ""){
+        ofstream mySystem;
+        mySystem.open(file.name + ".txt");
+        string files;
+        mySystem << "ENV " << file.name << " " << file.sizeBlock << " " << file.totalBlocks << " " << file.availableBlocks  << "\n";
 
-    for (auto const& x : file.files)
-    {
-        files +=  "FILE " + x.first + " ";
-        vector<int> blocks = x.second;
-        for (auto block =  blocks.begin(); block != blocks.end(); block++){
-            files += to_string(*block) + " ";
+        for (auto const& x : file.files)
+        {
+            files +=  "FILE " + x.first + " ";
+            vector<int> blocks = x.second;
+            for (auto block =  blocks.begin(); block != blocks.end(); block++){
+                files += to_string(*block) + " ";
+            }
         }
         files += "\nUSED_BLOCKS ";
+        for (auto elem: file.usedBlocks){
+            files += to_string(elem)+ " ";
+        }
+        files += "\n";
+        mySystem << files;
+        mySystem << file.memory;
+        mySystem.close();
+        cout << "SUCCESFULLY SAVED THE VIRTUAL SYSTEM ENVIRONMENT\n";
     }
-    for (auto elem: file.usedBlocks){
-        files += to_string(elem)+ " ";
+    else{
+        cout << "NOT VIRTUAL SYSTEM ENVIRONMENT LOADED\n";
     }
-    files += "\n";
-    mySystem << files;
-    mySystem << file.memory;
-    mySystem.close();
-    cout << "SUCCESFULLY SAVED THE VIRTUAL SYSTEM ENVIRONMENT\n";
 }
 
 /*
@@ -199,32 +218,33 @@ void info (fileSystem file){
  */
 
 fileSystem load (fileSystem file, vector <string> cmd){
-
-    string data;
-    ifstream inFile;
-    inFile.open(cmd[1]);
-    if (inFile.is_open()){
-        string buffer;
-        while(getline(inFile, buffer)){
-            data += buffer;
-        }
-        file = allocate(file, data, cmd[2]);
-        if(file.notSpace){
-            cout << "NOT ENOUGH SPACE FOR FILE\n";
-            file.notSpace = false;
-            file = remove(file, cmd[2], '1');
+    if (file.name == ""){
+        cout << "  NOT FILE SYSTEM ON USE\n";
+    }
+    else{
+        string data;
+        ifstream inFile;
+        inFile.open(cmd[1]);
+        if (inFile.is_open()){
+            string buffer;
+            while(getline(inFile, buffer)){
+                data += buffer;
+            }
+            file = allocate(file, data, cmd[2]);
+            if(file.notSpace){
+                cout << "NOT ENOUGH SPACE FOR FILE\n";
+                file.notSpace = false;
+                file = remove(file, cmd[2], '1');
+            }
+            else{
+                cout << "SUCCESFULLY LOADED INTO MEMORY\n";
+            }
         }
         else{
-            cout << "SUCCESFULLY LOADED INTO MEMORY\n";
+            cout << "ERROR: FILE NOT FOUND\n";
         }
+        inFile.close();
     }
-
-    else{
-        cout << "ERROR: FILE NOT FOUND\n";
-    }
-    inFile.close();
-
-
     return file;
 }
 
@@ -267,8 +287,11 @@ void listFiles(fileSystem file){
     {
         cout << "  " <<  x.first << "\n";
     }
-    if (file.files.size() == 0){
-        cout << "NOT FILES IN MEMORY\n";
+    if(file.name == ""){
+        cout << "  NOT FILE SYSTEM ON USE\n";
+    }
+    else if (file.files.size() == 0){
+        cout << "  NOT FILES IN MEMORY\n";
     }
 }
 
@@ -407,4 +430,13 @@ void saveToDisk(string data, string name){
     mySystem.open(name);
     mySystem << data;
     mySystem.close();
+}
+
+void help(){
+    string buffer;
+    ifstream inFile;
+    inFile.open("help.txt");
+    while(getline(inFile, buffer)){
+        cout << buffer << "\n";
+    }
 }
